@@ -18,6 +18,6 @@ def random_email():
 @pytest.fixture(scope='function')
 def shopping_cart():
     response = requests.post('https://api.practicesoftwaretesting.com/carts')
-    assert response.status_code == 200
+    assert response.status_code == 201
 
     return response.json()['id']
