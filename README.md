@@ -1,5 +1,5 @@
 # Introduction
-This is an example test suite for the (practicesoftwaretesting)[https://practicesoftwaretesting.com/] site. It contains both UI and API test cases, covering some important functionalities.
+This is an example test suite for the [practicesoftwaretesting](https://practicesoftwaretesting.com/) site. It contains both UI and API test cases, covering some important functionalities.
 
 # Set up
 To set up test suite use the following steps:
