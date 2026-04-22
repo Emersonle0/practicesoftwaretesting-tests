@@ -1,50 +1,60 @@
-def test_pt_3_1(home_page):
-    home_page.goto()
-    
-    search_query = 'Saw' # W wordzie mamy użyte Pliers ale to daje negatywny wynik przez leather belt
-    home_page.search_for_product(search_query)
-    product_titles = home_page.get_all_product_titles()
-    
-    assert len(product_titles) > 0, "Brak wyników wyszukiwania na liście"
-    for title in product_titles:
-        assert search_query.lower() in title.lower(), f"Tytuł '{title}' nie zawiera frazy '{search_query}'"
+from selenium.webdriver import Firefox
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.expected_conditions import visibility_of_element_located, text_to_be_present_in_element, visibility_of_all_elements_located
+from selenium.webdriver.common.action_chains import ActionChains
 
-def test_pt_3_2(home_page):
-    home_page.goto()
-    
-    category_name = 'Power Tools'
-    home_page.filter_by_category(category_name)
-    
-    product_titles = home_page.get_all_product_titles()
-    assert len(product_titles) > 0, "Brak załadowanych produktów dla tej kategorii"
-    
-    contains_hand_tool = any('Pliers' in title for title in product_titles)
-    assert not contains_hand_tool, "Znaleziono narzędzie innej kategorii na liście (Pliers)"
+def test_pt_3_1(driver: Firefox):
+    driver.get('https://practicesoftwaretesting.com/')
 
+    search_text = 'Saw'
+    
+    search_query_input: WebElement = WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.ID, 'search-query')))
+    search_query_input.send_keys(search_text)
 
-def test_pt_3_3(home_page):
-    home_page.goto()
+    search_button: WebElement = WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.XPATH, '//button[@data-test=\'search-submit\']')))
+    search_button.click()
+
+    search_term: WebElement = WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.XPATH, '//span[@data-test=\'search-term\']')))
+    assert search_term.text == search_text
+
+    WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.XPATH, '//div[@data-test=\'search_completed\']')))
     
-    target_max_price = 50.0
+    product_titles: list[WebElement] = WebDriverWait(driver, 3.0).until(visibility_of_all_elements_located((By.XPATH, '//*[@data-test=\'product-name\']')))
+    assert all(search_text.lower() in x.text.lower() for x in product_titles)
+
+def test_pt_3_2(driver: Firefox):
+    driver.get('https://practicesoftwaretesting.com/')
+
+    category_input: WebElement = WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.XPATH, '//label[contains(text(), \'Power Tools\')]/input')))
+    category_input.click()
+
+    WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.XPATH, '//div[@data-test=\'filter_completed\']')))
     
-    max_slider_handle = home_page.page.locator('.ngx-slider-pointer-max')
-    slider_bar = home_page.page.locator('.ngx-slider-full-bar').first
+    product_titles: list[WebElement] = WebDriverWait(driver, 3.0).until(visibility_of_all_elements_located((By.XPATH, '//*[@data-test=\'product-name\']')))
+    assert len(product_titles) > 0
+    assert not any('pliers' in x.text.lower() for x in product_titles)    
+
+def test_pt_3_3(driver: Firefox):
+    driver.get('https://practicesoftwaretesting.com/')
     
-    max_handle_box = max_slider_handle.bounding_box()
-    bar_box = slider_bar.bounding_box()
+    price_slider: WebElement = WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.CLASS_NAME, 'ngx-slider-pointer-max')))
+    price_slider_bar: WebElement = WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.XPATH, '//span[contains(@class, \'ngx-slider-full-bar\')]')))
+
+    driver.execute_script('arguments[0].scrollIntoView();', price_slider)
+
+    ActionChains(driver).drag_and_drop_by_offset(
+        price_slider,
+        -price_slider_bar.rect['width'] / 4,
+        0).perform()
     
-    if max_handle_box and bar_box:
-        target_x = bar_box['x'] + (bar_box['width'] * 0.25)
-        
-        home_page.page.mouse.move(max_handle_box['x'] + max_handle_box['width'] / 2, max_handle_box['y'] + max_handle_box['height'] / 2)
-        home_page.page.mouse.down()
-        
-        home_page.page.mouse.move(target_x, max_handle_box['y'] + max_handle_box['height'] / 2)
-        home_page.page.mouse.up()
-        home_page.page.wait_for_timeout(1500)
-            
-    prices = home_page.get_all_product_prices()
+    driver.implicitly_wait(3.0)
     
-    assert len(prices) > 0, "Po filtracji siatka jest pusta"
-    for price in prices:
-        assert price <= target_max_price, f"Błąd filtru: znaleziona cena {price} przekracza limit {target_max_price}"
+    max_price_label: WebElement = WebDriverWait(driver, 3.0).until(visibility_of_element_located((By.XPATH, '//span[contains(@class, \'ngx-slider-model-high\')]')))
+    max_price = int(max_price_label.text.strip())
+
+    driver.implicitly_wait(3.0)
+    
+    product_prices: list[WebElement] = WebDriverWait(driver, 3.0).until(visibility_of_all_elements_located((By.XPATH, '//*[@data-test=\'product-price\']')))
+    assert all(float(x.text[1:]) <= max_price for x in product_prices)
